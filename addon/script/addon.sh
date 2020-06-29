@@ -128,9 +128,9 @@ do
               else
                 $BB echo -e "${LRED}  => Package not installed ${NC}" && break
               fi;
+              rm -rf /cache/VelvetPrebuilt.tar.xz 2>/dev/null;
+              $BB echo -e "${CYAN}  => Installation Finished ${NC}"
             fi;
-            rm -rf /cache/VelvetPrebuilt.tar.xz 2>/dev/null;
-            $BB echo -e "${CYAN}  => Installation Finished ${NC}"
             ;;
         "Wellbeing")
             $BB echo -e "${CYAN}  => Downloading Prebuilt Wellbeing Package ${NC}"

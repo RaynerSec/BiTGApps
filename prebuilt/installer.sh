@@ -166,18 +166,10 @@ on_partition_check() {
   dynamic_partitions=`getprop ro.boot.dynamic_partitions`
 }
 
-# Set fstab for getting mount point
-fstab() {
-  filesystem="/etc/fstab"
-  if [ -f "/etc/recovery.fstab" ]; then
-    filesystem="/etc/recovery.fstab"
-  fi;
-}
-
 # Set vendor mount point
 vendor_mnt() {
   device_vendorpartition=false
-  if [ -d /vendor ] && [ -n "$(cat $filesystem | grep /vendor)" ]; then
+  if [ -d /vendor ] && [ -n "$(cat /etc/fstab | grep /vendor)" ]; then
     device_vendorpartition=true
     VENDOR=/vendor
   fi;
@@ -209,7 +201,7 @@ setup_mountpoint() {
 }
 
 mount_apex() {
-  if [ -d /system_root/system ] && [ -n "$(cat $filesystem | grep /system_root)" ];
+  if [ -d /system_root/system ] && [ -n "$(cat /etc/fstab | grep /system_root)" ];
   then
     SYSTEM=/system_root/system
   else
@@ -268,10 +260,10 @@ umount_apex() {
 early_umount() {
   umount_apex;
   umount /data 2>/dev/null;
-  if [ -d /system ] && [ -n "$(cat $filesystem | grep /system)" ]; then
+  if [ -d /system ] && [ -n "$(cat /etc/fstab | grep /system)" ]; then
     umount /system 2>/dev/null;
   fi;
-  if [ -d /system_root ] && [ -n "$(cat $filesystem | grep /system_root)" ]; then
+  if [ -d /system_root ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
     umount /system_root 2>/dev/null;
   fi;
   umount /vendor 2>/dev/null;
@@ -315,7 +307,7 @@ mount_all() {
       mount -o ro -t auto $VENDOR
       mount -o rw,remount -t auto $VENDOR
     fi;
-    if [ -d /system_root ] && [ -n "$(cat $filesystem | grep /system_root)" ]; then
+    if [ -d /system_root ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
       ANDROID_ROOT=/system_root
     else
       ANDROID_ROOT=/system
@@ -356,9 +348,10 @@ system_layout() {
     # Set installation layout for dynamic partition
     SYSTEM=$ANDROID_ROOT
   else
-    if [ -f /system_root/system/build.prop ] && [ -n "$(cat $filesystem | grep /system_root)" ];
-    then
+    if [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
       SYSTEM=/system_root/system
+    elif [ ! -z "$active_slot" ]; then
+      SYSTEM=/system/system
     else
       SYSTEM=/system
     fi;
@@ -509,7 +502,6 @@ cleanup() {
   rm -rf $TMP/bitgapps_debug_complete_logs.tar.gz
   rm -rf $TMP/bitgapps_debug_failed_logs.tar.gz
   rm -rf $TMP/busybox-arm
-  rm -rf $TMP/bb
   rm -rf $TMP/curl
   rm -rf $TMP/data.prop
   rm -rf $TMP/g.prop
@@ -2266,6 +2258,21 @@ sdk_v25_install() {
   fi;
 }
 
+# Set APK update
+set_app_update() {
+  APK_DATA_UPDATE=true
+  GooglePlayStore="/data/app/com.android.vending-*"
+  GooglePlayServices="/data/app/com.google.android.gms-*"
+}
+
+# Wipe outdated APK package from /data
+on_app_update() {
+  if [ "$APK_DATA_UPDATE" == "true" ]; then
+    rm -rf $GooglePlayStore
+    rm -rf $GooglePlayServices
+  fi;
+}
+
 # Fix wiping of runtime permissions on dirty install
 runtime_permission() {
   rm -rf $SYSTEM/etc/data.prop
@@ -2760,7 +2767,6 @@ function pre_install() {
   logd;
   on_sdk;
   on_partition_check;
-  fstab;
   set_mount;
   early_umount;
   mount_all;
@@ -2768,7 +2774,7 @@ function pre_install() {
   # boot_SAR;
   # boot_AB;
   # boot_A;
-  on_AB;
+  # on_AB;
   mount_stat;
   profile;
   on_target;
@@ -2841,8 +2847,8 @@ function post_install() {
   sdk_fix;
   selinux_fix;
   # sqlite_opt;
-  addon_inst;
-  addon_restore;
+  # addon_inst;
+  # addon_restore;
   # config_info;
   on_installed;
   recovery_cleanup;
